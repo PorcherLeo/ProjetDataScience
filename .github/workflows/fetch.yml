@@ -1,0 +1,32 @@
+name: fetch-velib
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # toutes les 5 min (UTC)
+  workflow_dispatch:         # lancement manuel possible
+
+permissions:
+  contents: write            # pour modifier la release
+
+concurrency: fetch-velib     # jamais deux runs en même temps
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt requests
+      - name: Télécharger l'historique
+        run: |
+          gh release view data >/dev/null 2>&1 || gh release create data --title data --notes "données"
+          gh release download data -p historique_stations.csv --clobber || true
+      - name: Fetch
+        run: python fetch_data.py
+      - name: Remettre l'historique
+        run: gh release upload data historique_stations.csv --clobber
