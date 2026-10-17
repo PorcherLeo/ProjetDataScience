@@ -1,0 +1,5 @@
+historique_stations.csv
+fetch.log
+.fetch.pid
+.ipynb_checkpoints/
+__pycache__/
