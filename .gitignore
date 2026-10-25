@@ -3,3 +3,5 @@ fetch.log
 .fetch.pid
 .ipynb_checkpoints/
 __pycache__/
+historique_merged.csv
+historique_backfill.csv

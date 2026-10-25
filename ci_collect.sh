@@ -26,6 +26,16 @@ fi
 touch "$FILE"
 # ligne finale incomplète éventuelle : on termine la ligne
 [ -s "$FILE" ] && [ -n "$(tail -c1 "$FILE")" ] && echo >> "$FILE"
+
+# --- intégration (idempotente) de l'historique local figé de la release "data-backfill"
+if gh release download data-backfill -p historique_backfill.csv -O backfill.csv --clobber 2>/dev/null; then
+    if "$PYTHON" merge_sources.py "$FILE" backfill.csv -o merged.tmp; then
+        mv merged.tmp "$FILE"
+    else
+        echo "Fusion du backfill échouée, historique inchangé" >&2
+    fi
+    rm -f backfill.csv merged.tmp
+fi
 START_LINES=$(wc -l < "$FILE")
 echo "Historique de départ : $START_LINES lignes"
 
