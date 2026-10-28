@@ -27,7 +27,7 @@ Relevés des données météo (API dd'open data Météo) toutes les 15 min, coll
 - Suppresion des lignes où le shift n'était pas possible à cause des données manquantes (avaliabe_t30 est null)
 
 ### Modélisation des features : 
-- introduction de la variable **deltat30** (avaliable_t30 - avaliable) pour étudier si des vélos disparaissent ou arrivent
+- introduction de la variable **delta_t30** (avaliable_t30 - avaliable) pour étudier si des vélos disparaissent ou arrivent
 - introduction de la catégorie **tendence** : hausse, baisse ou stable
 - intoduction de la répresentation cyclique cos / sin du jour
 - introduction de la variable **is_weekend**
@@ -41,7 +41,7 @@ Relevés des données météo (API dd'open data Météo) toutes les 15 min, coll
 - suppresion des doublons sur les données météo et configuration de l'index sur horodatage.
 
 ### Jointure avec les données vélib
-La récupération de données météo se fait toutes les 15 minutes, contrairement aux données vélib qui a été fait toutes les 15 minutes.
+La récupération de données météo se fait toutes les 15 minutes, contrairement aux données vélib qui a été fait toutes les 5 minutes.
 Pour maximiser la récupération des données et éviter de la perte de lignes à cause de données temporelles non alignées, nous avons décidé de:
 - séparer les données météo que l'on souhaite garder en trois types : continues, cumulées et textuelles
 - les données continues comme la temperature ou la vitesse du vent peuvent être interpolées
