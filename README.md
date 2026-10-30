@@ -27,7 +27,7 @@ Relevés des données météo (API dd'open data Météo) toutes les 15 min, coll
 - Suppresion des lignes où le shift n'était pas possible à cause des données manquantes (avaliabe_t30 est null)
 
 ### Modélisation des features : 
-- introduction de la variable **delta_t30** (avaliable_t30 - avaliable) pour étudier si des vélos disparaissent ou arrivent
+- introduction de la variable **delta_t30** (avaliable - avaliabe_last_30) pour étudier si des vélos disparaissent ou arrivent
 - introduction de la catégorie **tendence** : hausse, baisse ou stable
 - intoduction de la répresentation cyclique cos / sin du jour
 - introduction de la variable **is_weekend**
