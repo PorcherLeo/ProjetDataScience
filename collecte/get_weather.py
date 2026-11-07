@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import openmeteo_requests
 
 import pandas as pd
@@ -100,7 +102,7 @@ minutely_15_dataframe["weather_label"] = (
 
 # Exporter sans l'index pandas
 minutely_15_dataframe.to_csv(
-    "meteo_paris.csv",
+    Path(__file__).resolve().parent.parent / "data" / "meteo_paris.csv",
     index=False,
     encoding="utf-8-sig"
 )
