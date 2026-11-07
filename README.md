@@ -12,7 +12,7 @@
 
 Relevés des stations (API open data Vélib) toutes les 5 min, collectés par GitHub Actions et stockés dans la release `data` (`historique_stations.csv`).
 
-Relevés des données météo (API dd'open data Météo) toutes les 15 min, collectés par appel API (`script get_weather.py`) et exportés dans un csv (`meteo_paris_octobre_2026.csv`).
+Relevés des données météo (API dd'open data Météo) toutes les 15 min, collectés par appel API (`script get_weather.py`) et exportés dans un csv (`meteo_paris.csv`).
 
 ### Préparation et nettoyage des données vélib
 

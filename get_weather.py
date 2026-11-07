@@ -52,7 +52,7 @@ params = {
 	"hourly": ["temperature_2m", "weather_code", "rain", "precipitation", "apparent_temperature", "wind_speed_10m"],
 	"minutely_15": ["temperature_2m", "apparent_temperature", "precipitation", "weather_code", "wind_speed_10m", "rain"],
 	"start_date": "2026-10-16",
-	"end_date": "2026-11-02",
+	"end_date": "2026-11-07",
 }
 responses = openmeteo.weather_api(url, params = params)
 
@@ -100,7 +100,7 @@ minutely_15_dataframe["weather_label"] = (
 
 # Exporter sans l'index pandas
 minutely_15_dataframe.to_csv(
-    "meteo_paris_octobre_2026.csv",
+    "meteo_paris.csv",
     index=False,
     encoding="utf-8-sig"
 )
