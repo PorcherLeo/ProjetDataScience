@@ -12,7 +12,7 @@
 
 Relevés des stations (API open data Vélib) toutes les 5 min, collectés par GitHub Actions et stockés dans la release `data` (`historique_stations.csv`).
 
-Relevés des données météo (API dd'open data Météo) toutes les 15 min, collectés par appel API (`script get_weather.py`) et exportés dans un csv (`meteo_paris.csv`).
+Relevés des données météo (API dd'open data Météo) toutes les 15 min, collectés par appel API (`collecte/get_weather.py`) et exportés dans un csv (`data/meteo_paris.csv`).
 
 ### Préparation et nettoyage des données vélib
 
@@ -36,7 +36,7 @@ Relevés des données météo (API dd'open data Météo) toutes les 15 min, coll
 ## Données météo
 
 ### Récupération et préparation des données
-- récuperation avec le script `get_weather.py`
+- récuperation avec le script `collecte/get_weather.py`
 - renommage de la colonne date en horodatage pour avoir les mêmes noms dans les deux tables et ensuite la conversion de la colonne en datetime
 - suppresion des doublons sur les données météo et configuration de l'index sur horodatage.
 
@@ -50,3 +50,58 @@ Pour maximiser la récupération des données et éviter de la perte de lignes �
 - arrondissement des floats à 2 chiffres après la virgule
 
 On effectue une jointure à gauche avec les données vélos. 
+
+## Organisation du dépôt
+
+- `collecte/` : code pour récupérer la donnée. `fetch_data.py` relève l'état des stations, `ci_collect.sh` et `.github/workflows/fetch.yml` le lancent sur GitHub Actions, `merge_sources.py` fusionne les historiques, `get_weather.py` récupère la météo, `script.sh` permet une collecte en local.
+- `notebooks/` : `01-exploration.ipynb` (exploration, nettoyage, création des variables et export), `02-modelisation.ipynb` (validation, comparaison des modèles, test final), `03_modelisation_catboost_ridge.ipynb` (essais CatBoost et Ridge), `02.Velib-Gloire.ipynb` (travail sur les stations voisines, repris dans le notebook 01).
+- `data/` : `meteo_paris.csv` (suivi par git), `raw/historique_final_version.csv` (relevés bruts, issus de la release `data`) et `clean/historique_nettoye.csv` (produit par le notebook 01). Les deux derniers ne sont pas versionnés car trop lourds.
+- `requirements.txt` : dépendances. Les notebooks se lancent depuis le dossier `notebooks/`.
+
+Pour reproduire : télécharger l'historique de la release `data` dans `data/raw/historique_final_version.csv`, lancer `01-exploration.ipynb`, puis `02-modelisation.ipynb`.
+
+## Processus expérimental
+
+1. Collecte : un relevé de toutes les stations toutes les 5 minutes, du 16 octobre au 6 novembre 2026 (arrêt le 7 novembre à 0 h UTC), et météo toutes les 15 minutes. La collecte a des trous de plusieurs heures à partir du 1er novembre.
+2. Exploration et nettoyage (notebook 01) : filtrage des stations, création de la cible `available_t30`, des variables temporelles, de la météo, des stations voisines et des manifestations, puis export du jeu nettoyé (6,5 millions de lignes, 1 217 stations).
+3. Modélisation (notebook 02) : découpage temporel, validation walk-forward sur 15 plis, comparaison de la baseline et de trois modèles, réglage des paramètres, entraînement final, test, importance des variables et analyse des erreurs.
+
+## Choix de modélisation
+
+- Cible : `available_t30`, le nombre de vélos disponibles 30 minutes plus tard. Le modèle prédit la variation (`available_t30 - available`), et la prédiction finale est ramenée entre 0 et la capacité de la station.
+- Baseline : la persistance, c'est-à-dire prédire qu'il y aura autant de vélos dans 30 minutes qu'à l'instant présent.
+- Métriques : MAE (principale) et RMSE.
+- Pas de découpage aléatoire : deux relevés voisins de 5 minutes sont presque identiques et la cible est à 30 minutes, ce qui ferait fuiter l'information du test vers l'entraînement. On coupe donc dans le temps.
+- Test : les 5 derniers jours (2 au 6 novembre), soit environ 19 % des lignes. Il n'est utilisé qu'une seule fois à la fin.
+- Validation : walk-forward sur 15 plis. Le pli k s'entraîne sur tout ce qui précède un jour donné, moins une marge de 30 minutes (purge) pour que la cible n'empiète pas sur la validation, et valide sur ce jour. 
+- Variables : remplissage de la station, nombre de vélos à la même heure la veille, variation sur 30 minutes, heure (sinus et cosinus), week-end, heure de pointe, météo et stations voisines à moins de 500 m (taux de remplissage moyen, variation moyenne, nombre de voisines). Chaque variable n'utilise que des informations connues à l'instant de la prédiction.
+- Modèles comparés : XGBoost, XGBoost avec les stations voisines, Random Forest. Les valeurs manquantes des voisines (stations sans voisine à 500 m, 0,06 % des lignes) sont laissées vides pour XGBoost et remplacées par la médiane pour le Random Forest.
+- Réglage : grille de paramètres sur les 3 derniers plis avec 25 % des lignes, pour limiter le temps de calcul. Les paramètres retenus sont profondeur 6, 400 arbres et taux d'apprentissage 0,1 pour XGBoost, profondeur 12 et feuille minimale 20 pour le Random Forest.
+- Modèle final : XGBoost avec les stations voisines, entraîné une fois sur tout le jeu d'entraînement avec la perte en erreur absolue.
+
+## Résultats
+
+Validation walk-forward, moyenne sur les 15 plis :
+
+| Modèle | MAE | RMSE |
+|---|---|---|
+| baseline (persistance) | 1,230 | 2,098 |
+| XGBoost | 1,235 | 2,127 |
+| XGBoost + voisines | 1,218 | 2,097 |
+| Random Forest | 1,233 | 2,095 |
+
+Seul XGBoost avec les stations voisines passe sous la baseline. Les modèles sont moins bons que la baseline sur les premiers plis, qui ont peu de données d'entraînement.
+
+Test (2 au 6 novembre), modèle entraîné une fois sur tout le jeu d'entraînement :
+
+| | MAE | RMSE |
+|---|---|---|
+| baseline | 1,272 | 2,257 |
+| modèle final | 1,215 | 2,144 |
+
+Soit 4,5 % de MAE et 5,0 % de RMSE en moins. Le modèle fait mieux que la baseline chaque jour du test.
+
+Ce qu'on en retient :
+- La variable la plus utile est la variation moyenne des stations voisines. La météo n'apporte presque rien.
+- Le gain vient des heures de pointe (7 h à 9 h et 17 h à 19 h), surtout pour les grandes stations. Hors pointe, le modèle ne fait pas mieux que la persistance.
+- Le modèle fait moins bien que la baseline quand la station est remplie à plus de 80 % (MAE 1,298 contre 1,234).

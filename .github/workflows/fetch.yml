@@ -1,8 +1,7 @@
 name: fetch-velib
 
 on:
-  schedule:
-    - cron: "17 * * * *"    # relance toutes les heures (le job tourne ~5h40)
+  # collecte arrêtée le 7 novembre 2026 : plus de déclenchement automatique
   workflow_dispatch:         # lancement manuel possible
 
 permissions:
@@ -27,4 +26,5 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt requests
       - name: Collecte toutes les 5 min
+        working-directory: collecte
         run: ./ci_collect.sh

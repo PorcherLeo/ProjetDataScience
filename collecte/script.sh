@@ -7,7 +7,7 @@ cd "$(dirname "$(readlink -f "$0")")"
 PIDFILE=.fetch.pid
 LOG=fetch.log
 INTERVAL=300
-PYTHON=../env/bin/python
+PYTHON=../../env/bin/python
 [ -x "$PYTHON" ] || PYTHON=python3
 
 is_running() {
@@ -28,7 +28,7 @@ case "$1" in
             done
         " >> "$LOG" 2>&1 &
         echo $! > "$PIDFILE"
-        echo "Démarré (PID $!), toutes les $((INTERVAL / 60)) min, logs dans Projet/$LOG"
+        echo "Démarré (PID $!), toutes les $((INTERVAL / 60)) min, logs dans collecte/$LOG"
         ;;
     stop)
         if is_running; then
