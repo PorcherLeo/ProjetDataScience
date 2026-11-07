@@ -2,6 +2,32 @@
 
 **Objectif :** prédire le nombre de vélos Vélib disponibles dans 30 minutes, dans n'importe quelle station.
 
+
+## Lancer le projet
+
+Les données lourdes ne sont pas dans le dépôt (limite de taille de GitHub). Les relevés bruts sont dans la release `data` du dépôt, et le jeu nettoyé est recréé par le notebook 01.
+
+```bash
+git clone https://github.com/PorcherLeo/ProjetDataScience.git
+cd ProjetDataScience   # le dossier du dépôt (à adapter si le projet est dans un sous-dossier)
+
+python3 -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+
+mkdir -p data/raw
+curl -L -o data/raw/historique_final_version.csv \
+  https://github.com/PorcherLeo/ProjetDataScience/releases/download/data/historique_stations.csv
+```
+
+Puis ouvrir les notebooks du dossier `notebooks/` dans VS Code et lancer dans l'ordre :
+1. `01-exploration.ipynb` (tout exécuter) : lit `data/raw/historique_final_version.csv` et `data/meteo_paris.csv`, garde les relevés jusqu'au 7 novembre 2026 à 0 h UTC, et écrit `data/clean/historique_nettoye.csv` (environ 1,2 Go, quelques minutes).
+2. `02-modelisation.ipynb` (tout exécuter) : lit le fichier nettoyé. Compter environ une heure de calcul et 8 Go de mémoire.
+
+Le téléchargement fait environ 730 Mo. Le fichier de la release peut contenir des relevés après le 7 novembre : ils sont écartés par le notebook 01.
+
+Les fichiers de `data/` : `meteo_paris.csv` est déjà dans le dépôt. Pour le régénérer, lancer `python collecte/get_weather.py`. La collecte des relevés (`collecte/`) est arrêtée depuis le 7 novembre.
+
 ## Pistes
 
 - Feature engineering pour trouver des motifs (heure, jour de la semaine, historique de la station, etc.)
@@ -58,11 +84,12 @@ On effectue une jointure à gauche avec les données vélos.
 - `data/` : `meteo_paris.csv` (suivi par git), `raw/historique_final_version.csv` (relevés bruts, issus de la release `data`) et `clean/historique_nettoye.csv` (produit par le notebook 01). Les deux derniers ne sont pas versionnés car trop lourds.
 - `requirements.txt` : dépendances. Les notebooks se lancent depuis le dossier `notebooks/`.
 
-Pour reproduire : télécharger l'historique de la release `data` dans `data/raw/historique_final_version.csv`, lancer `01-exploration.ipynb`, puis `02-modelisation.ipynb`.
+
 
 ## Processus expérimental
 
-1. Collecte : un relevé de toutes les stations toutes les 5 minutes, du 16 octobre au 6 novembre 2026 (arrêt le 7 novembre à 0 h UTC), et météo toutes les 15 minutes. La collecte a des trous de plusieurs heures à partir du 1er novembre.
+1. Collecte : un relevé de toutes les stations toutes les 5 minutes, du 16 octobre au 6 novembre 2026 (arrêt le 7 novembre à 0 h UTC), et météo toutes les 15 minutes.
+
 2. Exploration et nettoyage (notebook 01) : filtrage des stations, création de la cible `available_t30`, des variables temporelles, de la météo, des stations voisines et des manifestations, puis export du jeu nettoyé (6,5 millions de lignes, 1 217 stations).
 3. Modélisation (notebook 02) : découpage temporel, validation walk-forward sur 15 plis, comparaison de la baseline et de trois modèles, réglage des paramètres, entraînement final, test, importance des variables et analyse des erreurs.
 

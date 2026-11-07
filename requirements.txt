@@ -13,3 +13,5 @@ matplotlib-inline==0.2.2
 openmeteo_requests==1.7.5
 openmeteo_sdk==1.29.0
 xgboost==3.4.1
+catboost==1.2.10
+ipykernel==7.4.0
