@@ -5,4 +5,6 @@ fetch.log
 __pycache__/
 historique_merged.csv
 historique_backfill.csv
-raw/
+data/raw/
+data/clean/
+.cache.sqlite
