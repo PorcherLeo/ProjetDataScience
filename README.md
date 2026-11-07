@@ -93,7 +93,7 @@ On effectue une jointure à gauche avec les données vélos.
 2. Exploration et nettoyage (notebook 01) : filtrage des stations, création de la cible `available_t30`, des variables temporelles, de la météo, des stations voisines et des manifestations, puis export du jeu nettoyé (6,5 millions de lignes, 1 217 stations).
 3. Modélisation (notebook 02) : découpage temporel, validation walk-forward sur 15 plis, comparaison de la baseline et de trois modèles, réglage des paramètres, entraînement final, test, importance des variables et analyse des erreurs.
 
-## Choix de modélisation
+## Choix de modélisation 1
 
 - Cible : `available_t30`, le nombre de vélos disponibles 30 minutes plus tard. Le modèle prédit la variation (`available_t30 - available`), et la prédiction finale est ramenée entre 0 et la capacité de la station.
 - Baseline : la persistance, c'est-à-dire prédire qu'il y aura autant de vélos dans 30 minutes qu'à l'instant présent.
@@ -132,3 +132,54 @@ Ce qu'on en retient :
 - La variable la plus utile est la variation moyenne des stations voisines. La météo n'apporte presque rien.
 - Le gain vient des heures de pointe (7 h à 9 h et 17 h à 19 h), surtout pour les grandes stations. Hors pointe, le modèle ne fait pas mieux que la persistance.
 - Le modèle fait moins bien que la baseline quand la station est remplie à plus de 80 % (MAE 1,298 contre 1,234).
+
+
+
+## Choix de modélisation 2
+
+- Cible : `available_t30`, le nombre de vélos disponibles 30 minutes plus tard. Les modèles prédisent directement ce nombre. Les prédictions sont ensuite bornées entre 0 et la capacité de la station, puis arrondies au vélo entier.
+- Baseline 
+- Métriques : MAE comme métrique principale et RMSE pour suivre les grosses erreurs. On regarde aussi le R², l’accuracy « vide / non vide » et le recall. 
+- Pas de découpage aléatoire : On sépare les périodes chronologiquement, avec une purge de 30 minutes aux frontières pour que la cible d’un ensemble ne déborde pas sur le suivant.
+- Entraînement : du 16 au 30 octobre, soit 4 559 804 observations.
+- Validation : du 31 octobre au 3 novembre, soit 1 174 816 observations. 
+- Test : du 4 novembre au début du 7 novembre, en heure de Paris, soit 761 730 observations. 
+- Variables : disponibilité actuelle, capacité, nombres de vélos mécaniques et électriques, coordonnées, heure, heure cyclique, week-end, disponibilité 30 minutes avant et variation passée sur 30 minutes. On teste aussi la météo et trois variables de voisinage à moins de 500 m : nombre de voisines, disponibilité moyenne et nombre de voisines observées au même instant.
+- Modèles comparés : Ridge et CatBoost, avec et sans voisinage. Des expériences complémentaires retirent la météo, l’historique ou les horaires, ou gardent seulement les variables de base.
+- Préparation : pour Ridge, remplacement des valeurs manquantes par la médiane, standardisation des variables numériques et encodage des stations. Pour CatBoost, remplacement des valeurs manquantes à partir de l’entraînement et traitement du code station comme variable catégorielle.
+- Réglage : Ridge compare trois valeurs d’`alpha` : 1, 10 et 100. CatBoost utilise au maximum 300 arbres, une profondeur de 6 et un taux d’apprentissage de 0,07, avec arrêt anticipé sur validation.
+- Modèle retenu : CatBoost sans météo, avec historique, horaires et voisinage. Il utilise 300 arbres et est réentraîné sur l’entraînement et la validation avant l’évaluation finale.
+- Walk-forward : prévu dans le notebook, mais pas exécuté. Les résultats ci-dessous reposent sur une validation chronologique fixe.
+
+## Résultats
+
+Validation :
+
+| Modèle | MAE | RMSE |
+| --- | ---: | ---: |
+| Baseline (persistance) | 1,2612 | 2,2066 |
+| Ridge variables essentielles | 1,2858 | 2,2095 |
+| CatBoost sans voisinage | 1,2637 | 2,1920 |
+| CatBoost avec voisinage | 1,2520 | 2,1773 |
+| CatBoost sans météo, avec voisinage | **1,2505** | **2,1738** |
+
+CatBoost sans météo obtient la meilleure MAE. Le voisinage aide CatBoost : avec la météo conservée, la MAE passe de 1,2637 à 1,2520 lorsqu’on ajoute les voisines. Ridge reste derrière la baseline, même avec sa meilleure configuration.
+
+Test, après réentraînement sur l’entraînement et la validation :
+
+| Modèle | MAE | RMSE | Recall|
+| --- | ---: | ---: | ---: |
+| Baseline | 1,2992 | 2,3082 | **69,25 %** |
+| Ridge variables essentielles | 1,3239 | 2,3112 | 63,38 % |
+| CatBoost sans météo, avec voisinage | **1,2884** | **2,2743** | 59,76 % |
+
+CatBoost réduit la MAE d’environ **0,83 %** et la RMSE d’environ **1,47 %** par rapport à la baseline. Le gain existe sur le test, mais reste faible.
+
+Ce qu’on en retient :
+
+- La disponibilité actuelle est de loin la variable dominante dans l’importance calculée pour CatBoost avec voisinage.
+- La baseline est solide : sur validation, 41,1 % des observations ne changent pas en 30 minutes et 70,7 % changent d’au plus un vélo.
+- Le voisinage aide CatBoost, tandis que retirer la météo améliore légèrement sa MAE dans cette expérience.
+- Sur validation, CatBoost fait mieux aux heures de pointe et lors des variations d’au moins 4 vélos. Les écarts sont très faibles le week-end et hors pointe.
+- Sur le test, CatBoost prédit un peu mieux le nombre de vélos en moyenne, mais détecte moins bien les stations réellement vides.
+- Ces résultats portent sur une période courte. Sans walk-forward exécuté, on ne peut pas encore conclure que le gain se maintient sur d’autres périodes.
